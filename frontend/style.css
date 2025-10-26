@@ -1,3 +1,23 @@
+/* Drag-and-drop area styles */
+.drop-area {
+    border: 2px dashed #7b8cff;
+    border-radius: 8px;
+    padding: 1.2rem 0.5rem;
+    margin-bottom: 1rem;
+    background: #f8f8ff;
+    color: #3b3b6d;
+    cursor: pointer;
+    transition: border 0.2s, background 0.2s;
+    outline: none;
+}
+.drop-area.dragover {
+    border-color: #0056b3;
+    background: #e6eaff;
+}
+.drop-area:focus {
+    border-color: #0056b3;
+    background: #e6eaff;
+}
 /* Footer styles */
 .footer {
     margin-top: 2.2rem;

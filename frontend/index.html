@@ -7,15 +7,18 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container card">
-        <header class="header">
+    <div class="container card" role="main" aria-label="File uploader main content">
+        <header class="header" role="banner">
             <img src="https://img.icons8.com/fluency/48/upload.png" alt="Upload Icon" width="48" height="48"/>
-            <h1>File Uploader</h1>
+            <h1 id="main-title">File Uploader</h1>
         </header>
-        <main>
+        <main tabindex="-1">
             <form id="uploadForm" aria-label="File upload form">
                 <label for="fileInput" class="visually-hidden">Choose file to upload</label>
-                <input type="file" id="fileInput" name="file" required aria-required="true" aria-label="File input">
+                <div id="dropArea" class="drop-area" tabindex="0" aria-label="Drag and drop area">
+                    <span id="dropText">Drag & drop a file here or click to select</span>
+                    <input type="file" id="fileInput" name="file" required aria-required="true" aria-label="File input" style="display:none;">
+                </div>
                 <button type="submit" id="uploadBtn" aria-label="Upload file" class="cta">Upload File</button>
             </form>
             <div id="progressBar" class="progress-bar" style="display:none;">
@@ -23,10 +26,10 @@
             </div>
             <div id="status" role="status" aria-live="polite"></div>
             <div class="actions">
-                <a href="files.html" class="link-btn cta">View Uploaded Files</a>
+                <a href="files.html" class="link-btn cta" tabindex="0">View Uploaded Files</a>
             </div>
         </main>
-        <footer class="footer">
+        <footer class="footer" role="contentinfo">
             <span>Created by Ritesh Sanjay Godse | <a href="https://shorturl.at/7l10g" target="_blank" rel="noopener">Resume</a></span>
         </footer>
     </div>
@@ -34,10 +37,29 @@
     (function() {
         const uploadForm = document.getElementById('uploadForm');
         const fileInput = document.getElementById('fileInput');
+        const dropArea = document.getElementById('dropArea');
+        const dropText = document.getElementById('dropText');
         const statusDiv = document.getElementById('status');
         const progressBar = document.getElementById('progressBar');
         const progress = progressBar.querySelector('.progress');
         const uploadBtn = document.getElementById('uploadBtn');
+
+        // Drag-and-drop logic
+        dropArea.addEventListener('click', () => fileInput.click());
+        dropArea.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') fileInput.click(); });
+        dropArea.addEventListener('dragover', e => { e.preventDefault(); dropArea.classList.add('dragover'); });
+        dropArea.addEventListener('dragleave', e => { e.preventDefault(); dropArea.classList.remove('dragover'); });
+        dropArea.addEventListener('drop', e => {
+            e.preventDefault();
+            dropArea.classList.remove('dragover');
+            if (e.dataTransfer.files.length) {
+                fileInput.files = e.dataTransfer.files;
+                dropText.textContent = e.dataTransfer.files[0].name;
+            }
+        });
+        fileInput.addEventListener('change', () => {
+            dropText.textContent = fileInput.files.length ? fileInput.files[0].name : 'Drag & drop a file here or click to select';
+        });
 
         function resetStatus() {
             statusDiv.textContent = '';
@@ -56,8 +78,18 @@
                 setStatus('Please select a file.', 'error');
                 return;
             }
+            const file = fileInput.files[0];
+            // Frontend file size/type validation
+            if (file.size > 10 * 1024 * 1024) {
+                setStatus('File too large (max 10MB).', 'error');
+                return;
+            }
+            if (!file.type || file.type === 'application/octet-stream') {
+                setStatus('Unsupported or missing file type.', 'error');
+                return;
+            }
             const formData = new FormData();
-            formData.append('file', fileInput.files[0]);
+            formData.append('file', file);
             progressBar.style.display = 'block';
             progress.style.width = '0%';
             uploadBtn.disabled = true;
@@ -73,16 +105,19 @@
             xhr.onload = function() {
                 uploadBtn.disabled = false;
                 progressBar.style.display = 'none';
-                if (xhr.status === 200) {
-                    const result = JSON.parse(xhr.responseText);
-                    if (result.success) {
-                        setStatus('✔ Upload successful!', 'success');
-                        fileInput.value = '';
-                    } else {
-                        setStatus('✖ Upload failed: ' + (result.message || 'Unknown error'), 'error');
-                    }
+                let result = {};
+                try {
+                    result = JSON.parse(xhr.responseText);
+                } catch (err) {
+                    setStatus('✖ Upload failed: Invalid server response.', 'error');
+                    return;
+                }
+                if (xhr.status === 200 && result.success) {
+                    setStatus('✔ Upload successful!', 'success');
+                    fileInput.value = '';
+                    dropText.textContent = 'Drag & drop a file here or click to select';
                 } else {
-                    setStatus('✖ Upload failed: ' + xhr.statusText, 'error');
+                    setStatus('✖ Upload failed: ' + (result.message || xhr.statusText || 'Unknown error'), 'error');
                 }
             };
             xhr.onerror = function() {

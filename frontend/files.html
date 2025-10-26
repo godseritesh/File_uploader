@@ -34,13 +34,16 @@
     </div>
     <script>
     (function() {
+        let page = 1;
+        const pageSize = 10;
         async function fetchFiles() {
-            const response = await fetch('http://localhost:8000/files');
-            const files = await response.json();
+            const response = await fetch(`http://localhost:8000/files?page=${page}&page_size=${pageSize}`);
+            const data = await response.json();
+            const files = data.files;
             const tbody = document.querySelector('#filesTable tbody');
             const emptyState = document.getElementById('emptyState');
             tbody.innerHTML = '';
-            if (files.length === 0) {
+            if (!files || files.length === 0) {
                 document.getElementById('filesTable').style.display = 'none';
                 emptyState.style.display = 'block';
             } else {
