@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Uploader</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container card">
+        <header class="header">
+            <img src="https://img.icons8.com/fluency/48/upload.png" alt="Upload Icon" width="48" height="48"/>
+            <h1>File Uploader</h1>
+        </header>
+        <main>
+            <form id="uploadForm" aria-label="File upload form">
+                <label for="fileInput" class="visually-hidden">Choose file to upload</label>
+                <input type="file" id="fileInput" name="file" required aria-required="true" aria-label="File input">
+                <button type="submit" id="uploadBtn" aria-label="Upload file" class="cta">Upload File</button>
+            </form>
+            <div id="progressBar" class="progress-bar" style="display:none;">
+                <div class="progress"></div>
+            </div>
+            <div id="status" role="status" aria-live="polite"></div>
+            <div class="actions">
+                <a href="files.html" class="link-btn cta">View Uploaded Files</a>
+            </div>
+        </main>
+        <footer class="footer">
+            <span>Created by Ritesh Sanjay Godse | <a href="https://shorturl.at/7l10g" target="_blank" rel="noopener">Resume</a></span>
+        </footer>
+    </div>
+    <script>
+    (function() {
+        const uploadForm = document.getElementById('uploadForm');
+        const fileInput = document.getElementById('fileInput');
+        const statusDiv = document.getElementById('status');
+        const progressBar = document.getElementById('progressBar');
+        const progress = progressBar.querySelector('.progress');
+        const uploadBtn = document.getElementById('uploadBtn');
+
+        function resetStatus() {
+            statusDiv.textContent = '';
+            statusDiv.className = '';
+        }
+
+        function setStatus(message, type) {
+            statusDiv.innerHTML = message;
+            statusDiv.className = type;
+        }
+
+        uploadForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            resetStatus();
+            if (!fileInput.files.length) {
+                setStatus('Please select a file.', 'error');
+                return;
+            }
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            progressBar.style.display = 'block';
+            progress.style.width = '0%';
+            uploadBtn.disabled = true;
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', 'http://localhost:8000/upload-document', true);
+            xhr.upload.onprogress = function(e) {
+                if (e.lengthComputable) {
+                    const percent = (e.loaded / e.total) * 100;
+                    progress.style.width = percent + '%';
+                }
+            };
+            xhr.onload = function() {
+                uploadBtn.disabled = false;
+                progressBar.style.display = 'none';
+                if (xhr.status === 200) {
+                    const result = JSON.parse(xhr.responseText);
+                    if (result.success) {
+                        setStatus('✔ Upload successful!', 'success');
+                        fileInput.value = '';
+                    } else {
+                        setStatus('✖ Upload failed: ' + (result.message || 'Unknown error'), 'error');
+                    }
+                } else {
+                    setStatus('✖ Upload failed: ' + xhr.statusText, 'error');
+                }
+            };
+            xhr.onerror = function() {
+                uploadBtn.disabled = false;
+                progressBar.style.display = 'none';
+                setStatus('✖ Upload failed: Network error', 'error');
+            };
+            xhr.send(formData);
+        });
+    })();
+    </script>
+</body>
+</html>
